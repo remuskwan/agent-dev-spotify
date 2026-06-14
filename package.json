@@ -1,0 +1,25 @@
+{
+  "name": "agent-dev-spotify",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "serve": "tsx src/service/server.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config evals/vitest.config.ts",
+    "test:watch": "vitest --config evals/vitest.config.ts",
+    "eval:live": "EVAL_MODE=live vitest run --config evals/vitest.config.ts --reporter=verbose"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.6"
+  }
+}

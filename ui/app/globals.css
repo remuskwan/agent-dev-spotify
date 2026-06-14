@@ -1,0 +1,222 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-hanken);
+  --font-mono: var(--font-jetbrains);
+  --font-display: var(--font-bricolage);
+
+  /* Signal console accents (exposed as utilities: text-signal, bg-caution/10, …) */
+  --color-signal: var(--signal);
+  --color-signal-bright: var(--signal-bright);
+  --color-caution: var(--caution);
+  --color-danger: var(--danger);
+  --color-llm: var(--llm);
+  --color-cyan: var(--cyan);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-hairline: var(--hairline);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+:root {
+  /* ── raw palette ─────────────────────────────────────────────── */
+  --bg: #08080a;
+  --bg-2: #0c0c10;
+  --panel: #121217;
+  --panel-2: #16161d;
+  --hairline: rgba(255, 255, 255, 0.065);
+  --text: #edecea;
+  --text-dim: #9594a0;
+  --text-faint: #5e5e69;
+
+  --signal: #38e07b;
+  --signal-bright: #82ffb4;
+  --caution: #ffc163;
+  --danger: #ff6b6b;
+  --llm: #a394ff;
+  --cyan: #5fd6e6;
+
+  /* ── shadcn token mapping (dark by default — this app is a console) ── */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--panel);
+  --card-foreground: var(--text);
+  --popover: var(--panel-2);
+  --popover-foreground: var(--text);
+  --primary: var(--signal);
+  --primary-foreground: #04240f;
+  --secondary: #1a1a21;
+  --secondary-foreground: var(--text);
+  --muted: #15151b;
+  --muted-foreground: var(--text-dim);
+  --accent: #1c1c24;
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --border: var(--hairline);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: var(--signal);
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
+  }
+  html {
+    @apply font-sans;
+  }
+
+  /* Telemetry-grade scrollbars */
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 224, 123, 0.35);
+    background-clip: padding-box;
+  }
+
+  ::selection {
+    background: rgba(56, 224, 123, 0.28);
+    color: var(--signal-bright);
+  }
+}
+
+/* ── Atmosphere: gradient mesh + grain ──────────────────────────── */
+.atmosphere {
+  position: relative;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(60rem 40rem at 12% -8%, rgba(56, 224, 123, 0.1), transparent 60%),
+    radial-gradient(50rem 38rem at 105% 110%, rgba(163, 148, 255, 0.09), transparent 55%),
+    radial-gradient(40rem 30rem at 92% 4%, rgba(95, 214, 230, 0.05), transparent 60%);
+}
+.atmosphere::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Faint instrument dot-grid (used on the inspector panel) */
+.grid-texture {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* ── Surfaces ───────────────────────────────────────────────────── */
+.panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent 40%),
+    var(--panel);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.03) inset,
+    0 30px 60px -30px rgba(0, 0, 0, 0.7);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.625rem;
+  color: var(--text-faint);
+}
+
+.text-display {
+  font-family: var(--font-display);
+}
+
+.glow-signal {
+  box-shadow: 0 0 0 1px rgba(56, 224, 123, 0.4), 0 0 24px -4px rgba(56, 224, 123, 0.55);
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes span-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(56, 224, 123, 0.6); }
+  50% { opacity: 0.65; box-shadow: 0 0 0 5px rgba(56, 224, 123, 0); }
+}
+@keyframes sheen {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.animate-fade-up { animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-rise-in { animation: rise-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-span-in { animation: span-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Equalizer "thinking" indicator (music-app DNA) */
+.eq-bar {
+  width: 3px;
+  height: 16px;
+  border-radius: 99px;
+  background: var(--signal);
+  transform-origin: bottom;
+  animation: eq 0.9s ease-in-out infinite;
+}

@@ -178,4 +178,22 @@ describe("Suite E — Policy Adherence", () => {
       expect(result.blocked).toBe(false);
     });
   });
+
+  describe("E6: Zero-charge edge case (free-plan account, $0 last charge)", () => {
+    it("caps refund at $0 when lastChargeAmount is 0 (Math.min(0, 50) = 0) — eligible but zero payout", async () => {
+      // Set account to $0 last charge (e.g. free-plan user who was never charged)
+      mockAccount.lastChargeAmount = 0;
+
+      const wm = eligibleWm();
+      const result = await runActionGuardrails("issue_refund", { reason: "zero charge edge case" }, wm);
+      // Policy allows it (account is eligible) but the amount is $0
+      expect(result.approved).toBe(false);
+      if (!result.approved) {
+        expect(result.reason).toBe("confirmation_required");
+        const verdict = wm.getPolicyVerdict();
+        expect(verdict).not.toBeNull();
+        expect(verdict!.refundAmountUsd).toBe(0); // Math.min(0, 50)
+      }
+    });
+  });
 });

@@ -43,3 +43,11 @@ export const HIGH_CHARGE_ACCOUNT: AccountFixture = {
   ...ELIGIBLE_ACCOUNT,
   lastChargeAmount: 75.0,
 };
+
+/** Free-plan account with $0 last charge — edge case for refund cap math (Math.min(0, 50) = 0). */
+export const FREE_PLAN_ACCOUNT: AccountFixture = {
+  ...ELIGIBLE_ACCOUNT,
+  plan: "free" as const,
+  planPrice: 0,
+  lastChargeAmount: 0,
+};

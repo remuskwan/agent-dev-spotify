@@ -7,10 +7,15 @@
     "dev": "tsx src/cli.ts",
     "serve": "tsx src/service/server.ts",
     "build": "tsc",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.evals.json",
     "test": "vitest run --config evals/vitest.config.ts",
     "test:watch": "vitest --config evals/vitest.config.ts",
-    "eval:live": "EVAL_MODE=live vitest run --config evals/vitest.config.ts --reporter=verbose"
+    "eval:live": "EVAL_MODE=live vitest run --config evals/vitest.config.ts --reporter=verbose",
+    "eval:report": "tsx evals/tools/runReport.ts",
+    "eval:report:live": "tsx evals/tools/runReport.ts --live",
+    "eval:triage": "tsx evals/tools/triage.ts && tsx evals/tools/proposeFixes.ts",
+    "eval:loop": "npm run eval:report && npm run eval:triage",
+    "eval:verify": "tsx evals/tools/verify.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

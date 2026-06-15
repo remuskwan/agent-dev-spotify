@@ -92,6 +92,18 @@ describe("Suite B — Intent Routing", () => {
     });
   });
 
+  describe("B5: Keyword precision — pure informational questions containing sensitive keywords", () => {
+    // Seeded harder case: "billing" is in SENSITIVE_KEYWORDS, causing purely informational
+    // billing questions to be classified as "sensitive" and routed to the capable model.
+    // This test asserts the DESIRED behavior (info), which CURRENTLY FAILS (quality-miss).
+    // Fix: make classifyIntent() distinguish billing-action intents from billing-info questions.
+    it("classifies 'What billing options are available?' as info (billing query, not billing action)", () => {
+      const result = runInputGuardrails("What billing options are available?");
+      expect(result.blocked, `should not block: "What billing options are available?"`).toBe(false);
+      expect(result.intentRisk, `should be info: "What billing options are available?"`).toBe("info");
+    });
+  });
+
   describe("B4: false-block rate — legitimate assertive inputs must not be blocked", () => {
     const legitimateAssertive = [
       "I NEED to cancel this ASAP",

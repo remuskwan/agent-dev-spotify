@@ -4,3 +4,5 @@ dist/
 .env.local
 *.log
 traces/
+evals/reports/*.json
+evals/reports/FIXES.md

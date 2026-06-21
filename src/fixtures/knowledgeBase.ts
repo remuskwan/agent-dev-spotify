@@ -83,9 +83,9 @@ export const KNOWLEDGE_BASE: KnowledgeEntry[] = [
   },
 ];
 
-export function searchKnowledgeBase(query: string, topK = 3): KnowledgeEntry[] {
+export function scoreKeyword(query: string): { entry: KnowledgeEntry; score: number }[] {
   const terms = query.toLowerCase().split(/\s+/);
-  const scored = KNOWLEDGE_BASE.map((entry) => {
+  return KNOWLEDGE_BASE.map((entry) => {
     const text = (entry.title + " " + entry.content + " " + entry.tags.join(" ")).toLowerCase();
     const score = terms.reduce((acc, term) => {
       const tagMatch = entry.tags.some((t) => t.includes(term)) ? 3 : 0;
@@ -95,8 +95,10 @@ export function searchKnowledgeBase(query: string, topK = 3): KnowledgeEntry[] {
     }, 0);
     return { entry, score };
   });
+}
 
-  return scored
+export function searchKnowledgeBase(query: string, topK = 3): KnowledgeEntry[] {
+  return scoreKeyword(query)
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)

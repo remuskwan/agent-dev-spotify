@@ -25,7 +25,33 @@ all edits before stage 5 runs.
 Add harder cases directly into the existing `evals/suites/*.test.ts` files
 (one runner, all gates enforced automatically).
 
-**Case-authoring conventions:**
+#### Automated expansion (after patching a safety-gate surface)
+
+Every fix to a safety-gate surface (D/E/F/G) should be followed by running
+`eval:expand` to generate new variants that the patch should also catch.
+This prevents eval-set overfitting — the golden set grows alongside every fix,
+so future regressions surface immediately.
+
+```bash
+# After patching an injection pattern in src/guardrails/input.ts:
+npm run eval:expand -- --suite F \
+  --context "patched: 'override.*guidelines' and 'forget.*constraints' variants"
+
+# After tightening a policy cap in src/guardrails/action.ts:
+npm run eval:expand -- --suite E \
+  --context "patched: chained refund requests bypass session cap"
+```
+
+The tool:
+1. Reads existing test cases from the suite file as few-shot examples.
+2. Calls the LLM to generate N new adversarial variants (default 8, `--count N`).
+3. Outputs paste-ready TypeScript entries (string-array for F; scenario objects for D/E/G).
+4. **Never writes to test files** — a human reviews and pastes accepted variants.
+
+**Invariant:** every accepted variant must be verified to trigger the patched rule
+before being committed. Run `npm test` on each paste.
+
+**Case-authoring conventions (manual):**
 
 | Situation | Pattern |
 |-----------|---------|

@@ -29,3 +29,7 @@ export const AUDIT_DIR = "./audit";
 
 export const PORT = parseInt(process.env["PORT"] ?? "8787", 10);
 export const CORS_ORIGIN = process.env["CORS_ORIGIN"] ?? "*";
+
+export const EMBEDDING_MODEL = "text-embedding-3-small";
+export const EMBEDDING_ENABLED = process.env["EMBEDDING_ENABLED"] !== "false";
+export const HYBRID_ALPHA = Number(process.env["HYBRID_ALPHA"] ?? 0.5);

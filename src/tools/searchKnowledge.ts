@@ -1,5 +1,5 @@
 import type OpenAI from "openai";
-import { searchKnowledgeBase } from "../fixtures/knowledgeBase.js";
+import { semanticSearch } from "../retrieval/ragRetriever.js";
 import type { ToolContext, ToolEntry } from "../types.js";
 
 const spec: OpenAI.Chat.ChatCompletionTool = {
@@ -24,7 +24,7 @@ const spec: OpenAI.Chat.ChatCompletionTool = {
 
 async function handler(args: Record<string, unknown>, _ctx: ToolContext): Promise<string> {
   const query = String(args.query ?? "");
-  const results = searchKnowledgeBase(query);
+  const results = await semanticSearch(query);
 
   if (results.length === 0) {
     return JSON.stringify({ found: false, message: "No relevant knowledge base articles found for this query." });

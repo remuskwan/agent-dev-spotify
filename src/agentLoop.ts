@@ -274,7 +274,9 @@ export class AgentLoop {
         : "I'm sorry, I couldn't generate a response. Please try again.");
 
     // ── Step 7: Output guardrails ────────────────────────────────────────────
-    const allGrounding = [...ragSnippets, ...history.getToolResultContents()];
+    // Include the user's message so that dollar amounts or phrases the user
+    // themselves stated are not flagged as ungrounded agent claims.
+    const allGrounding = [userMessage, ...ragSnippets, ...history.getToolResultContents()];
     const outSpan = this.tracer.span("output_guardrails", "guardrail", {});
     const outResult = runOutputGuardrails(reply, allGrounding);
     outSpan.end({ blocked: outResult.blocked, reason: outResult.reason ?? "none" });

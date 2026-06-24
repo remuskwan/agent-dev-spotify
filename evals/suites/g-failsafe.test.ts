@@ -42,9 +42,12 @@ import { complete } from "../../src/llm.js";
 import { LlmSequence, toolCallReply, textReply } from "../helpers/mockLlm.js";
 import { makeHarness } from "../helpers/agentHarness.js";
 import { WorkingMemory } from "../../src/memory/workingMemory.js";
+import { durableActionStore } from "../../src/memory/durableActionStore.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // §9.4 durable store is a process-level singleton — isolate each test.
+  durableActionStore.reset();
 });
 
 function programLLM(responses: ReturnType<typeof textReply>[]): void {

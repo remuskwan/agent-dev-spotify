@@ -2,9 +2,10 @@ import type { WorkingMemory } from "../memory/workingMemory.js";
 import type { ConversationHistory } from "../memory/conversationHistory.js";
 import type { WorkingMemoryState } from "../types.js";
 
-export interface SafeWorkingMemory extends Omit<WorkingMemoryState, "verificationToken" | "confirmationToken" | "idempotencyStore"> {
+export interface SafeWorkingMemory extends Omit<WorkingMemoryState, "verificationToken" | "confirmationToken" | "idempotencyStore" | "expectedOtp"> {
   verificationToken: "set" | null;
   confirmationToken: "set" | null;
+  expectedOtp: "set" | null;
   idempotencyStoreSize: number;
 }
 
@@ -16,11 +17,12 @@ export interface TranscriptMessage {
 
 export function serializeWorkingMemory(wm: WorkingMemory): SafeWorkingMemory {
   const state = wm.serialize();
-  const { verificationToken, confirmationToken, idempotencyStore, ...rest } = state;
+  const { verificationToken, confirmationToken, idempotencyStore, expectedOtp, ...rest } = state;
   return {
     ...rest,
     verificationToken: verificationToken !== null ? "set" : null,
     confirmationToken: confirmationToken !== null ? "set" : null,
+    expectedOtp: expectedOtp !== null ? "set" : null,
     idempotencyStoreSize: Object.keys(idempotencyStore).length,
   };
 }

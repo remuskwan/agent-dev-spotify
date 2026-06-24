@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { VERIFICATION_TOKEN_TTL_MS } from "../config.js";
+import { VERIFICATION_TOKEN_TTL_MS, MAX_OTP_ATTEMPTS } from "../config.js";
 import type { WorkingMemoryState, PendingAction, PolicyVerdict } from "../types.js";
 
 export class WorkingMemory {
@@ -12,6 +12,9 @@ export class WorkingMemory {
       identityVerified: false,
       verificationToken: null,
       verificationTokenExpiry: null,
+      expectedOtp: null,
+      failedOtpAttempts: 0,
+      otpLocked: false,
       pendingAction: null,
       confirmationToken: null,
       idempotencyKey: null,
@@ -47,6 +50,37 @@ export class WorkingMemory {
     this.state.verificationToken = null;
     this.state.verificationTokenExpiry = null;
     this.state.identityVerified = false;
+  }
+
+  // ── OTP brute-force protection (§9.2) ────────────────────────────────────────
+
+  setExpectedOtp(otp: string): void {
+    this.state.expectedOtp = otp;
+  }
+
+  getExpectedOtp(): string | null {
+    return this.state.expectedOtp;
+  }
+
+  /** Record a failed OTP attempt; locks the session once the cap is reached. */
+  recordFailedOtp(): number {
+    this.state.failedOtpAttempts++;
+    if (this.state.failedOtpAttempts >= MAX_OTP_ATTEMPTS) {
+      this.state.otpLocked = true;
+    }
+    return this.state.failedOtpAttempts;
+  }
+
+  getFailedOtpAttempts(): number {
+    return this.state.failedOtpAttempts;
+  }
+
+  isOtpLocked(): boolean {
+    return this.state.otpLocked;
+  }
+
+  resetOtpAttempts(): void {
+    this.state.failedOtpAttempts = 0;
   }
 
   // ── Pending action / confirmation ───────────────────────────────────────────

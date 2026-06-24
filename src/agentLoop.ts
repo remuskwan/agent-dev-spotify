@@ -235,6 +235,29 @@ export class AgentLoop {
 
       if (breakAfterToolCalls) break;
 
+      // §9.2: OTP brute-force lockout → escalate to a human instead of looping
+      // back to another verification prompt.
+      if (this.wm.isOtpLocked() && !this.wm.isEscalated()) {
+        toolLogs.push("[escalate] OTP verification locked after repeated failures — escalating to human");
+        const ctx: ToolContext = { workingMemory: this.wm, grounded: groundingSources };
+        await this.registry.dispatch(
+          "escalate_to_human",
+          {
+            reason: "OTP verification locked after repeated failed attempts",
+            intent: "identity verification",
+            context: "Possible OTP brute force — do not issue further verification codes.",
+          },
+          ctx
+        );
+        turnSpan.end({ outcome: "escalated_otp_lock" });
+        return {
+          reply:
+            "For your security, identity verification has been locked after multiple incorrect codes. " +
+            "I'm connecting you with a human support agent who can help. Please hold on.",
+          toolLogs,
+        };
+      }
+
       // Escalate on too many consecutive guardrail blocks
       if (this.wm.getConsecutiveGuardrailBlocks() >= MAX_CONSECUTIVE_GUARDRAIL_BLOCKS) {
         toolLogs.push(`[escalate] ${MAX_CONSECUTIVE_GUARDRAIL_BLOCKS} consecutive guardrail blocks — escalating to human`);

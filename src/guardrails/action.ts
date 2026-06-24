@@ -1,5 +1,11 @@
-import { REFUND_CAP_USD, MAX_REFUNDS_PER_SESSION, MAX_PLAN_CHANGES_PER_SESSION } from "../config.js";
+import {
+  REFUND_CAP_USD,
+  MAX_REFUNDS_PER_SESSION,
+  MAX_PLAN_CHANGES_PER_SESSION,
+  ACTION_HISTORY_WINDOW_DAYS,
+} from "../config.js";
 import { DEMO_ACCOUNT } from "../fixtures/accountFixture.js";
+import { durableActionStore } from "../memory/durableActionStore.js";
 import type { WorkingMemory } from "../memory/workingMemory.js";
 import type { ActionGuardrailOutcome, PolicyVerdict } from "../types.js";
 
@@ -15,11 +21,19 @@ function runPolicyEngine(
   args: Record<string, unknown>,
   wm: WorkingMemory
 ): PolicyVerdict {
+  const userId = String(args.userId ?? wm.getUserId());
+
   if (toolName === "issue_refund") {
     if (!DEMO_ACCOUNT.isEligibleForRefund) {
       return { allowed: false, reason: "Account is not eligible for a refund at this time." };
     }
-    if (DEMO_ACCOUNT.refundsIssuedLast90Days >= 1) {
+    // §9.4: durable, cross-session history check so a fresh session cannot evade
+    // the 90-day cap. Combines the account-backend flag with refunds issued in
+    // any session during the process lifetime.
+    const priorRefunds =
+      DEMO_ACCOUNT.refundsIssuedLast90Days +
+      durableActionStore.refundsWithinDays(userId, ACTION_HISTORY_WINDOW_DAYS);
+    if (priorRefunds >= 1) {
       return { allowed: false, reason: "A refund has already been issued within the last 90 days." };
     }
     if (wm.getRefundCount() >= MAX_REFUNDS_PER_SESSION) {
@@ -32,7 +46,11 @@ function runPolicyEngine(
   if (toolName === "manage_subscription") {
     const action = String(args.action ?? "");
 
-    if (wm.getPlanChangeCount() >= MAX_PLAN_CHANGES_PER_SESSION) {
+    // §9.4: durable, cross-session plan-change history backs the per-session cap.
+    const priorPlanChanges =
+      wm.getPlanChangeCount() +
+      durableActionStore.planChangesWithinDays(userId, ACTION_HISTORY_WINDOW_DAYS);
+    if (priorPlanChanges >= MAX_PLAN_CHANGES_PER_SESSION) {
       return { allowed: false, reason: `Plan change limit (${MAX_PLAN_CHANGES_PER_SESSION}) reached for this session.` };
     }
 

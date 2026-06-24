@@ -24,6 +24,17 @@ export const VERIFICATION_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 export const MAX_CONSECUTIVE_GUARDRAIL_BLOCKS = 3;
 
+// §9.2 hardening: OTP brute-force lockout. The demo's canonical code is DEMO_OTP;
+// any other syntactically valid code counts as a failed attempt. After
+// MAX_OTP_ATTEMPTS failures the session's identity verification is locked and the
+// agent escalates to a human instead of prompting for more codes.
+export const MAX_OTP_ATTEMPTS = 3;
+export const DEMO_OTP = "123456";
+
+// §9.4 hardening: window for the durable, cross-session refund/plan-change history
+// check that backs the per-session rate caps.
+export const ACTION_HISTORY_WINDOW_DAYS = 90;
+
 export const TRACES_DIR = "./traces";
 export const AUDIT_DIR = "./audit";
 

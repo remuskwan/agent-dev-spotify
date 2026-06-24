@@ -43,9 +43,12 @@ vi.mock("../../src/fixtures/accountFixture.js", () => ({
 import { complete } from "../../src/llm.js";
 import { LlmSequence, toolCallReply, textReply } from "../helpers/mockLlm.js";
 import { makeHarness } from "../helpers/agentHarness.js";
+import { durableActionStore } from "../../src/memory/durableActionStore.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // §9.4 durable store is a process-level singleton — isolate each test.
+  durableActionStore.reset();
 });
 
 function programLLM(responses: ReturnType<typeof textReply>[]): void {
@@ -125,10 +128,10 @@ describe("Suite C — Sensitive Happy Path", () => {
 
       // Turn 2: confirm OTP → triggers confirmation_required for manage_subscription(cancel)
       programLLM([
-        toolCallReply("verify_identity", { action: "confirm", otp: "654321" }),
+        toolCallReply("verify_identity", { action: "confirm", otp: "123456" }),
         toolCallReply("manage_subscription", { action: "cancel" }),
       ]);
-      await chat("654321");
+      await chat("123456");
       expect(wm.isVerified()).toBe(true);
       expect(wm.getPendingAction()?.type).toBe("manage_subscription");
       expect(wm.getPlanChangeCount()).toBe(0);
@@ -163,10 +166,10 @@ describe("Suite C — Sensitive Happy Path", () => {
 
       // Turn 2: confirm OTP → triggers confirmation_required for manage_subscription(upgrade)
       programLLM([
-        toolCallReply("verify_identity", { action: "confirm", otp: "111222" }),
+        toolCallReply("verify_identity", { action: "confirm", otp: "123456" }),
         toolCallReply("manage_subscription", { action: "upgrade", targetPlan: "family" }),
       ]);
-      await chat("111222");
+      await chat("123456");
       expect(wm.isVerified()).toBe(true);
       expect(wm.getPendingAction()?.type).toBe("manage_subscription");
 
@@ -199,10 +202,10 @@ describe("Suite C — Sensitive Happy Path", () => {
       await chat("I need a refund");
 
       programLLM([
-        toolCallReply("verify_identity", { action: "confirm", otp: "999888" }),
+        toolCallReply("verify_identity", { action: "confirm", otp: "123456" }),
         toolCallReply("issue_refund", { reason: "test" }),
       ]);
-      await chat("999888");
+      await chat("123456");
       expect(wm.getPendingAction()).not.toBeNull();
 
       // User says "no" — pending action should be aborted

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type OpenAI from "openai";
+import { durableActionStore } from "../memory/durableActionStore.js";
 import type { ToolContext, ToolEntry } from "../types.js";
 
 const spec: OpenAI.Chat.ChatCompletionTool = {
@@ -38,6 +39,8 @@ async function handler(args: Record<string, unknown>, ctx: ToolContext): Promise
   const approvedAmount = verdict?.refundAmountUsd ?? 0;
 
   ctx.workingMemory.incrementRefundCount();
+  // §9.4: persist to the durable cross-session store so a new session can't reset the cap.
+  durableActionStore.recordRefund(ctx.workingMemory.getUserId());
 
   const result = {
     status: "refunded",

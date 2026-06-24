@@ -65,7 +65,8 @@ describe("Suite J — Live Conversation Behavior", () => {
         );
         expect(reVerifyLogs).toHaveLength(0);
         expect(wm.isVerified()).toBe(true);
-      }
+      },
+      60_000
     );
   });
 
@@ -99,7 +100,8 @@ describe("Suite J — Live Conversation Behavior", () => {
         // Agent should either ask what the user wants or clarify — not propose a refund
         expect(result.reply).not.toMatch(/refund.*confirm|confirm.*refund/i);
         expect(result.reply).not.toMatch(/couldn't generate a response/i);
-      }
+      },
+      60_000
     );
   });
 });

@@ -37,15 +37,19 @@ async function handler(args: Record<string, unknown>, ctx: ToolContext): Promise
   const intent = String(args.intent ?? "unknown");
   const context = String(args.context ?? "");
 
+  // STUB: escalation currently only flags the session and returns a handoff
+  // summary. No ticket is filed in a real support system and the conversation
+  // transcript is NOT delivered to a human — `ticketId`/`estimatedWait` are
+  // placeholders. See DESIGN.md §4.4 for the planned transcript-attachment work.
   return JSON.stringify({
     status: "escalated",
-    message: "I'm connecting you with a human support agent right now. They'll have the full context of our conversation.",
+    message: "I'm connecting you with a human support agent. Please hold on.",
     handoffDetails: {
       reason,
       intent,
       context,
-      estimatedWait: "2–5 minutes",
-      ticketId: `TKT-${Date.now()}`,
+      estimatedWait: "2–5 minutes", // placeholder — not from a real queue
+      ticketId: `TKT-${Date.now()}`, // placeholder — no real ticket is created
     },
   });
 }

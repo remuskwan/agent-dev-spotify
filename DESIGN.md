@@ -102,8 +102,10 @@ and offers a human whenever asked.
   trigger password reset and session revocation flows.
 - **Knowledge Q&A:** policy, regions, pricing, feature availability — grounded
   in a retrieval corpus, not model memory.
-- **Escalation / handoff:** seamless transfer to a human agent with full context
-  when confidence is low, policy requires it, or the user asks.
+- **Escalation / handoff:** flag the session for a human agent with a structured
+  handoff summary (reason, intent, context) when confidence is low, policy
+  requires it, or the user asks. *(Live transfer + transcript delivery to a
+  support backend is not yet wired — see §4.4.)*
 
 ### 1.2 Non-functional requirements
 - **Latency:** first token < 1.5s p50 / < 3s p95; tool calls < 2s p95.
@@ -134,7 +136,7 @@ marketing. Architecture must not preclude them.
 | Identity verification | Step-up auth before any sensitive read/write (OTP flow); time-limited token with 15-min TTL. |
 | Confirmation & receipts | Explicit "confirm" step with a human-readable summary + amount before money moves; emits audit record. |
 | Memory | Two-tier runtime model — conversational history + working-memory state machine; long-term state via account backend (§5.4). |
-| Human handoff | Warm transfer with transcript, intent, and proposed action; auto-triggered on 3 consecutive guardrail blocks. |
+| Human handoff | Flags the session escalated with a structured handoff summary (reason, intent, context); auto-triggered on 3 consecutive guardrail blocks. Transcript delivery to a support backend is planned, not yet wired (§4.4). |
 | Feedback capture | Post-resolution CSAT + thumbs; feeds eval set (§3). |
 
 ---
@@ -252,6 +254,40 @@ Fail closed: any unexpected exception in guardrail logic → `policy_denied` blo
   If a guardrail or policy service is unavailable, the action is blocked and
   the user is offered escalation or retry.
 
+#### Planned: transcript attachment (escalation delivery)
+
+Today `escalate_to_human` only flags the session and returns a model-written
+summary; no transcript or ticket reaches a human (the placeholders `ticketId` /
+`estimatedWait` are not backed by a real system). The planned delivery path:
+
+1. **Capture provenance at escalation time.** `setEscalated()` stores a `handoff`
+   record in working memory — `{ reason, intent, context, triggeredBy:
+   "model" | "otp_lock" | "guardrail_blocks", consecutiveBlocks, timestamp }`.
+   This is the only tool-layer change; it supplies the trigger context the
+   model-written summary lacks (closes the §9.6 gap).
+2. **Assemble at the service boundary, not in the tool.** The tool stays a pure
+   intent marker. On the `escalated` false→true transition, the server (which
+   already holds history, working memory, and per-turn audit/span slices) builds
+   the payload: filtered `transcript`, `SafeWorkingMemory` summary,
+   `guardrailBlockHistory` + `triggeredBy`, and a `riskFlag` when
+   `consecutiveBlocks ≥ 2`.
+3. **Redact before egress.** Run the transcript through the existing
+   input-guardrail PCI/PII scrub (the same redaction §4.5 applies to audit logs)
+   — it can contain OTPs or card-like strings.
+4. **Deliver via a pluggable `EscalationSink`.** `deliver(payload) →
+   { ticketId }`. Dev/test impl appends to `handoffs/*.jsonl` (hermetic, no
+   network, mirrors the audit dir); prod impl POSTs to the support backend
+   (Zendesk / Salesforce / webhook — config choice, not a code change).
+5. **Idempotency.** One delivery per escalation transition per session, keyed off
+   an idempotency token (mirrors the refund idempotency pattern) so loop-forced
+   escalations can't double-file.
+6. **Reply reconciliation.** Don't block the user's reply on the external POST;
+   surface the real `ticketId` in the Inspector rather than the chat reply.
+
+*Out of scope here (related): a "freeze automation once escalated" session-state
+lockout — getting the human the data is separate from stopping the bot after
+handoff.*
+
 ### 4.5 Audit
 Immutable JSONL record of every sensitive action: who, what, policy verdict,
 confirmation token, idempotency key, outcome — for dispute resolution and
@@ -364,7 +400,7 @@ surface is easier to secure, test, and observe. Each sensitive write runs the
 | `verify_identity` | auth · non-sensitive | — (it *is* the gate) | `action='initiate'` sends OTP; `action='confirm'` validates OTP and issues the 15-min verification token that sensitive tools require. |
 | `manage_subscription` | write · **sensitive** | identity + scope + policy + confirm + rate-cap + idempotency | Start / upgrade / downgrade / cancel a plan. |
 | `issue_refund` | write · **sensitive** | identity + scope + policy ($ caps) + confirm + rate-cap + idempotency | Refund within policy. |
-| `escalate_to_human` | handoff · non-sensitive | — | Warm transfer with transcript, intent, and proposed action. Marks session as `escalated`. |
+| `escalate_to_human` | handoff · non-sensitive | — | Marks the session `escalated` and returns a handoff summary (reason, intent, context). **Stub:** no ticket is filed and no transcript is delivered to a human yet — `ticketId`/`estimatedWait` are placeholders (§4.4). |
 
 Payment-method updates are intentionally **not** a tool: they route to a secure,
 tokenized payment flow so raw card data never enters the agent/LLM path.
@@ -614,16 +650,20 @@ in a later turn.
 conversation with the human agent using a fabricated narrative: "The bot told me
 I was eligible for a refund but glitched out."
 
-**Current mitigation:** Escalation includes the full conversation transcript and
-intent context; audit log records every guardrail block.
+**Current mitigation:** The audit log records every guardrail block, so the full
+block history is recoverable post-hoc. Escalation itself only flags the session
+and returns a model-written summary — it does **not** yet deliver the transcript
+or block history to a human (§4.4), so there is no real-time signal at the
+handoff point today.
 
-**Gaps:** The human agent sees the transcript but the escalation reason is
-generic (`"Repeated guardrail blocks"`); the transcript alone may be
-insufficient to surface a manipulation pattern quickly.
+**Gaps:** Because no transcript or guardrail context reaches the human agent at
+handoff, a fabricated narrative is currently unchallenged at the point of
+contact; the escalation reason is also generic (`"Repeated guardrail blocks"`).
+The mitigation depends entirely on whoever later reviews the audit log.
 
 **Recommended guardrails:**
-- Include guardrail block reasons and tool-call history in the escalation
-  payload, not just the conversation transcript.
+- Wire transcript delivery (§4.4) and include guardrail block reasons + tool-call
+  history in the escalation payload, not just a model-written summary.
 - Flag sessions with ≥ 2 consecutive blocks in the escalation header so the
   human agent is primed to scrutinize the narrative.
 

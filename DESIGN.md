@@ -489,12 +489,18 @@ regex patterns. Attackers can evade them via:
 **Current mitigation:** Regex guard on single-turn patterns; system-prompt
 operating principles reinforce boundaries.
 
-**Gaps:** Semantic / multi-turn injection, homoglyph bypass, roleplay framing.
+**Status: PARTIALLY IMPLEMENTED (homoglyph bypass closed).**
+`runInputGuardrails` now normalizes every message before matching:
+`NFKD → strip combining diacritical marks → NFKC`. This defeats the diacritic
+homoglyph (`"ïgnore previous instructions"`) and fullwidth-character
+(`"４１１１…"` card numbers) evasions, and the normalization is applied to the
+injection patterns, the PCI card regex, and intent classification alike. Covered
+by suite-F fixture F7 (homoglyph injection blocks, fullwidth card blocked, benign
+accented text not over-blocked).
 
-**Recommended guardrails:**
-- Add Unicode normalization (NFKC) before pattern matching.
-- Add an LLM-based intent classifier as a secondary gate on flagged turns.
-- Expand suite-F fixtures to cover multi-turn persona-shift sequences.
+**Remaining (v2):** semantic / multi-turn persona-shift injection and roleplay
+framing — these need an LLM-based secondary classifier on flagged turns plus
+multi-turn fixtures, which are out of scope for the deterministic guardrail layer.
 
 ---
 
@@ -508,14 +514,17 @@ There is no failed-attempt counter in `WorkingMemory`.
 **Current mitigation:** 15-minute verification token TTL limits the window per
 session; card-number and PII detection reduce direct impact.
 
-**Gaps:** No lockout after N failed OTP attempts; no cross-session brute-force
-detection.
+**Status: IMPLEMENTED (High item closed).** `WorkingMemory` now tracks
+`failedOtpAttempts` and an `otpLocked` flag. `verify_identity(action='confirm')`
+validates the submitted code against the issued OTP (`DEMO_OTP`); each mismatch
+increments the counter, and after `MAX_OTP_ATTEMPTS = 3` failures the session is
+locked. While locked, `verify_identity` refuses both `initiate` and `confirm`,
+and the agent loop auto-escalates to a human instead of prompting for more codes.
+Covered by suite-F fixture F8 (WorkingMemory unit, tool unit, and a full-loop
+"3 incorrect OTPs → escalation, no further OTP prompt" test).
 
-**Recommended guardrails:**
-- Track `failedOtpAttempts` in `WorkingMemory`; lock identity verification
-  after 3 failures and auto-escalate.
-- Rate-limit `verify_identity(action='confirm')` calls at the session level.
-- Add suite-F fixture: 3 incorrect OTPs → escalation, not further OTP prompts.
+**Remaining (v2):** cross-session brute-force detection (failure counts are still
+per-session); a true server-side rate limit on `verify_identity` calls.
 
 ---
 
@@ -558,17 +567,19 @@ a static fixture — not a live, durable store.
 **Current mitigation:** Policy engine checks both session counters and the
 account fixture's 90-day flag.
 
-**Gaps:** In production, if the account backend is not the authoritative source
-for refund history (or is stale), repeated session creation circumvents all
-per-session caps.
+**Status: IMPLEMENTED (High item closed).** A process-level
+`durableActionStore` (`src/memory/durableActionStore.ts`) records every executed
+refund and plan change keyed by `userId`, and it survives session deletion. The
+policy engine now combines the per-session counter **and** this durable
+`ACTION_HISTORY_WINDOW_DAYS = 90` history before allowing a refund or plan change,
+so starting a fresh session no longer resets the effective cap. In the demo the
+store is an in-process singleton; in production it is the write-through durable
+store role (account backend / Redis). Covered by suite-F fixture F9, including a
+full end-to-end "refund in session 1 → fresh session 2 denied" test.
 
-**Recommended guardrails:**
-- Move refund and plan-change history checks to a write-through durable store
-  (account backend / Redis), not a per-session counter only.
-- Enforce the 90-day refund window server-side in the account service, not
-  just as a fixture flag.
-- Add a suite-F fixture: request refund, end session, start new session, request
-  refund again → second request denied.
+**Remaining (v2):** back the store with a real durable service (Redis / account
+backend) and enforce the 90-day window authoritatively server-side rather than in
+an in-process map + fixture flag.
 
 ---
 
@@ -686,11 +697,11 @@ detect a probing pattern across turns.
 
 ### 9.10 Priority summary
 
-| Priority | Vector | Impact | Key gap |
+| Priority | Vector | Impact | Status |
 |---|---|---|---|
-| **High** | OTP brute force (§9.2) | Full identity bypass | No failed-attempt lockout |
-| **High** | Cross-session rate-limit evasion (§9.4) | Unlimited refunds across sessions | Per-session counters only |
-| **High** | Semantic / roleplay injection (§9.1) | Policy bypass | Regex guard is single-turn only |
+| ~~High~~ **Done** | OTP brute force (§9.2) | Full identity bypass | ✅ Failed-attempt lockout + auto-escalate (F8) |
+| ~~High~~ **Done** | Cross-session rate-limit evasion (§9.4) | Unlimited refunds across sessions | ✅ Durable cross-session history in policy engine (F9) |
+| ~~High~~ **Partial** | Semantic / roleplay injection (§9.1) | Policy bypass | ✅ Homoglyph/fullwidth normalization (F7); semantic/multi-turn still open |
 | **Medium** | Accidental confirmation arming (§9.3) | Unintended money movement | Affirmation regex too broad |
 | **Medium** | Escalation abuse (§9.6) | Human-agent manipulation | Escalation payload lacks guardrail detail |
 | **Low** | Context-window flooding (§9.5) | Re-litigating prior refusals | Prior refusals not pinned in WM |
@@ -698,10 +709,10 @@ detect a probing pattern across turns.
 | **Low** | Authority impersonation (§9.8) | Behavioral softening | Prompt-only mitigation |
 | **Low** | Output guardrail probing (§9.9) | Information leakage | No cross-turn rate limiting on blocks |
 
-Items marked **High** should be addressed before any production deployment.
-Items marked **Medium** should be included in v2 hardening. All vectors above
-must have corresponding fixtures in suite F before the section is considered
-closed.
+The three **High** items are addressed (the homoglyph half of §9.1; semantic /
+multi-turn injection remains for v2). Items marked **Medium** should be included
+in v2 hardening. All vectors above must have corresponding fixtures in suite F
+before the section is considered closed.
 
 ---
 

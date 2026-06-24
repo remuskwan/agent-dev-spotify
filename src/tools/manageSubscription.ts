@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type OpenAI from "openai";
+import { durableActionStore } from "../memory/durableActionStore.js";
 import type { ToolContext, ToolEntry } from "../types.js";
 
 const PLAN_PRICES: Record<string, number> = {
@@ -51,6 +52,7 @@ async function handler(args: Record<string, unknown>, ctx: ToolContext): Promise
 
   if (action === "cancel") {
     ctx.workingMemory.incrementPlanChangeCount();
+    durableActionStore.recordPlanChange(ctx.workingMemory.getUserId());
     result = {
       status: "cancelled",
       message: "Your subscription has been successfully cancelled.",
@@ -62,6 +64,7 @@ async function handler(args: Record<string, unknown>, ctx: ToolContext): Promise
     const targetPlan = String(args.targetPlan ?? "individual");
     const price = PLAN_PRICES[targetPlan] ?? 9.99;
     ctx.workingMemory.incrementPlanChangeCount();
+    durableActionStore.recordPlanChange(ctx.workingMemory.getUserId());
     result = {
       status: "updated",
       message: `Your subscription has been changed to the ${targetPlan} plan.`,

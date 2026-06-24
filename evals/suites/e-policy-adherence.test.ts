@@ -42,6 +42,7 @@ vi.mock("../../src/fixtures/accountFixture.js", () => ({
 import { runOutputGuardrails } from "../../src/guardrails/output.js";
 import { runActionGuardrails } from "../../src/guardrails/action.js";
 import { WorkingMemory } from "../../src/memory/workingMemory.js";
+import { durableActionStore } from "../../src/memory/durableActionStore.js";
 
 function eligibleWm(): WorkingMemory {
   const wm = new WorkingMemory("policy-test", "user_test_001");
@@ -54,6 +55,8 @@ afterEach(() => {
   mockAccount.isEligibleForRefund = true;
   mockAccount.refundsIssuedLast90Days = 0;
   mockAccount.lastChargeAmount = 9.99;
+  // §9.4 durable store is a process-level singleton — isolate each test.
+  durableActionStore.reset();
 });
 
 describe("Suite E — Policy Adherence", () => {

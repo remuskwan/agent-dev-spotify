@@ -25,6 +25,9 @@ export interface WorkingMemoryState {
   identityVerified: boolean;
   verificationToken: string | null;
   verificationTokenExpiry: number | null;
+  expectedOtp: string | null;        // demo OTP issued on initiate; never surfaced to API
+  failedOtpAttempts: number;
+  otpLocked: boolean;                // true once failures hit MAX_OTP_ATTEMPTS
   pendingAction: PendingAction | null;
   confirmationToken: string | null;
   idempotencyKey: string | null;

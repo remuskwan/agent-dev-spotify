@@ -1,5 +1,16 @@
 import type { InputGuardrailResult, IntentRisk } from "../types.js";
 
+// §9.1 hardening: normalize before pattern matching so diacritic homoglyphs
+// ("ïgnore previous instructions") and fullwidth characters ("４１１１") cannot
+// evade the ASCII regex guards. NFKD splits accented letters into base + combining
+// mark, we strip the marks, then NFKC folds compatibility forms (fullwidth → ASCII).
+function normalizeForMatching(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip combining diacritical marks
+    .normalize("NFKC");
+}
+
 // PCI-DSS: block raw card numbers before they reach the LLM
 const CARD_NUMBER_REGEX = /\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b/;
 
@@ -38,8 +49,11 @@ function classifyIntent(text: string): IntentRisk {
 }
 
 export function runInputGuardrails(userMessage: string): InputGuardrailResult {
+  // Normalize once so homoglyph/fullwidth evasion can't slip past the regexes.
+  const normalized = normalizeForMatching(userMessage);
+
   // 1. PII / card number detection
-  if (CARD_NUMBER_REGEX.test(userMessage)) {
+  if (CARD_NUMBER_REGEX.test(normalized)) {
     return {
       blocked: true,
       reason:
@@ -52,7 +66,7 @@ export function runInputGuardrails(userMessage: string): InputGuardrailResult {
 
   // 2. Prompt injection detection
   for (const pattern of INJECTION_PATTERNS) {
-    if (pattern.test(userMessage)) {
+    if (pattern.test(normalized)) {
       return {
         blocked: true,
         reason: "I'm unable to process that request. How can I help you with your account today?",
@@ -62,8 +76,8 @@ export function runInputGuardrails(userMessage: string): InputGuardrailResult {
     }
   }
 
-  // 3. Intent classification
-  const intentRisk = classifyIntent(userMessage);
+  // 3. Intent classification (on normalized text so routing can't be evaded either)
+  const intentRisk = classifyIntent(normalized);
 
   return { blocked: false, intentRisk, hasPii: false };
 }
